@@ -8,6 +8,7 @@ const { WebClient } = require('@slack/web-api');
 // Create a new instance of the WebClient with your Slack token
 const slackClient = new WebClient(process.env.SLACK_TOKEN);
 let userEmail = '';
+let userId= '';
 // Define a function to get the email ID of a user
 async function getUserEmail(userId) {
   try {
@@ -16,7 +17,6 @@ async function getUserEmail(userId) {
 
     // Extract the email ID from the response
     userEmail = response.user.profile.email;
-    console.log("🚀 ~ getUserEmail ~ email:", userEmail)
   } catch (error) {
     console.error('Error occurred while getting user email:', error);
     throw error;
@@ -32,9 +32,7 @@ const app = new App({
 });
 
 // Listens to incoming messages that contain "hello"
-app.message('hello', async ({ message, say }) => {
-
-  await getUserEmail(message.user);
+app.message('signin', async ({ body, say }) => {
   // say() sends a message to the channel where the event was triggered
   await say({
     blocks: [
@@ -99,88 +97,128 @@ app.message('hello', async ({ message, say }) => {
         }
       },
     ],
-    text: `Hey there <@${message.user}>!`
+    text: `Hey there!`
   });
 });
 
-app.event('user_presence_change', async ({ event, say }) => {
-  if (event.presence === 'active') {
-    console.log("🚀 ~ app.event ~ event:", event)
-
-    await getUserEmail(event.user);
-    // say() sends a message to the channel where the event was triggered
-    await say({
-      "type": "home",
-      blocks: [
-        {
-          "type": "section",
-          "text": {
-            "type": "mrkdwn",
-            "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign in to loggr for the day"
-          }
+// Listens to incoming messages that contain "hello"
+app.message('Signin', async ({ body, say }) => {
+  // say() sends a message to the channel where the event was triggered
+  await say({
+    blocks: [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign in to loggr for the day"
+        }
+      },
+      {
+        "type": "divider"
+      },
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Tell us your work location"
         },
-        {
-          "type": "divider"
-        },
-        {
-          "type": "section",
-          "text": {
-            "type": "mrkdwn",
-            "text": "Tell us your work location"
+        "accessory": {
+          "type": "static_select",
+          "placeholder": {
+            "type": "plain_text",
+            "text": "Select a work location",
+            "emoji": true
           },
-          "accessory": {
-            "type": "static_select",
-            "placeholder": {
-              "type": "plain_text",
-              "text": "Select a work location",
-              "emoji": true
+          "options": [
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Client Location",
+                "emoji": true
+              },
+              "value": "Client Location"
             },
-            "options": [
-              {
-                "text": {
-                  "type": "plain_text",
-                  "text": "Client Location",
-                  "emoji": true
-                },
-                "value": "Client Location"
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Work from Home",
+                "emoji": true
               },
-              {
-                "text": {
-                  "type": "plain_text",
-                  "text": "Work from Home",
-                  "emoji": true
-                },
-                "value": "Work from Home"
+              "value": "Work from Home"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "On-Duty",
+                "emoji": true
               },
-              {
-                "text": {
-                  "type": "plain_text",
-                  "text": "On-Duty",
-                  "emoji": true
-                },
-                "value": "On-Duty"
+              "value": "On-Duty"
+            },
+            {
+              "text": {
+                "type": "plain_text",
+                "text": "Office",
+                "emoji": true
               },
-              {
-                "text": {
-                  "type": "plain_text",
-                  "text": "Office",
-                  "emoji": true
-                },
-                "value": "Office"
-              }
-            ],
-            "action_id": "static_select-action"
-          }
+              "value": "Office"
+            }
+          ],
+          "action_id": "static_select-action"
+        }
+      },
+    ],
+    text: `Hey there!`
+  });
+});
+
+app.message('signout', async({ say }) => {
+  await say({
+    blocks: [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign out of loggr for the day"
         },
-      ],
-      text: `Hey there <@${message.user}>!`
-    });
-  }
+        "accessory": {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Sign out",
+            "emoji": true
+          },
+          "action_id": "sign-out",
+        }
+      }
+    ],
+  })
+});
+app.message('Signout', async({ say }) => {
+  await say({
+    blocks: [
+      {
+        "type": "section",
+        "text": {
+          "type": "mrkdwn",
+          "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign out of loggr for the day"
+        },
+        "accessory": {
+          "type": "button",
+          "text": {
+            "type": "plain_text",
+            "text": "Sign out",
+            "emoji": true
+          },
+          "action_id": "sign-out",
+        }
+      }
+    ],
+  })
 });
 
 app.action('sign-in', async ({ body, ack, say, respond }) => {
-  console.log("🚀 ~ app.action ~ body:", body);
-  // Acknowledge the action
+  await getUserEmail(body.user.id);
+  
   const payload = {
     name: body.user.name,
     email: userEmail,
@@ -188,41 +226,51 @@ app.action('sign-in', async ({ body, ack, say, respond }) => {
     startTime: new Date(),
     status: true
   };
-  console.log("🚀 ~ app.action ~ payload:", payload)
 
   try {
-    await axios.post(`${process.env.SLACK_API_URL}api/attendance`, payload);
+    const currentDate = new Date().toISOString().split('T')[0];
+    const status = await axios.get(`${process.env.SLACK_API_URL}api/attendance`, { params: { email: userEmail } });
+    const isDateAvailable = status.data.some(entry => new Date(entry.startTime).toISOString().split('T')[0] === currentDate);
+
+    if (isDateAvailable) {
+      await say('You have already signed in for today');
+      return;
+    } else {
+      await axios.post(`${process.env.SLACK_API_URL}api/attendance`, payload);
+      await ack();
+      await say(`<@${body.user.id}> you have signed in for today. Have a great day ahead!`);
+    }
+    
   } catch (error) {
     console.error('Error:', error);
   }
-  await ack();
-  await say(`<@${body.user.id}> clicked the button`);
-
-
-  // Update the message block to remove or disable the button
-  const updatedBlocks = body.message.blocks.map(block => {
-    if (block.accessory && block.accessory.action_id === 'sign-in') {
-      console.log("🚀 ~ updatedBlocks ~ block.accessory:", block.accessory)
-      return {
-        ...block,
-        accessory: {
-          ...block.accessory,
-          disabled: true // Set disabled to true to disable the button
-        }
-      };
-    }
-    return block;
-  });
-  console.log("🚀 ~ updatedBlocks ~ updatedBlocks:", updatedBlocks)
-
-  await say({
-    replace_original: true,
-    blocks: updatedBlocks,
-  });
 });
 
+app.action('sign-out', async ({ body, ack, say }) => {
+  await getUserEmail(body.user.id);
+  try {
+    const currentDate = new Date().toISOString().split('T')[0];
+    const status = await axios.get(`${process.env.SLACK_API_URL}api/attendance`, { params: { email: userEmail } });
+    const isDateAvailable = status.data.some(entry => new Date(entry.startTime).toISOString().split('T')[0] === currentDate);
+    if (isDateAvailable) {
+      const payload = {
+        id: status.data[status.data.length-1].id,
+        endTime: new Date(),
+        status: false
+      };
+      await axios.put(`${process.env.SLACK_API_URL}api/attendance`, payload);
+      await ack();
+      await say(`<@${body.user.id}> you have signed out for today. Have a great day ahead!`);
+    } else {
+      await say('You have not signed in for today');
+    }
+  } catch (error) {
+    console.error('Error:', error);
+  }
+})
+
 app.action('static_select-action', async ({ body, ack, say }) => {
-  // console.log("🚀 ~ app.action ~ body:", body)
+  // Acknowledge the action
   await ack();
   // say() sends a message to the channel where the event was triggered
   await say({
@@ -253,26 +301,4 @@ app.action('static_select-action', async ({ body, ack, say }) => {
 (async () => {
   // Start your app
   await app.start();
-  console.log('⚡️ Bolt app is running!');
 })();
-
-
-// Define the schedule for the message
-const schedule = '29 20 * * *'; // Every day at 8:07 PM
-
-// Define the message to be sent
-const message = 'Hello from your Slack bot!';
-
-// Schedule the message
-cron.schedule(schedule, async () => {
-  try {
-    // Send the message to a specific channel
-    const result = await slackClient.chat.postMessage({
-      
-      text: message,
-    })
-    console.log('Message sent:', result.ts);
-  } catch (error) {
-    console.error('Error sending message:', error);
-  }
-});
