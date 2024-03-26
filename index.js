@@ -1,6 +1,5 @@
 require('dotenv').config(); // Add this line at the top
 
-const cron = require('node-cron');
 const axios = require('axios');
 const { App } = require('@slack/bolt');
 const { WebClient } = require('@slack/web-api');
@@ -8,7 +7,6 @@ const { WebClient } = require('@slack/web-api');
 // Create a new instance of the WebClient with your Slack token
 const slackClient = new WebClient(process.env.SLACK_TOKEN);
 let userEmail = '';
-let userId= '';
 // Define a function to get the email ID of a user
 async function getUserEmail(userId) {
   try {
@@ -171,54 +169,9 @@ app.message('Signin', async ({ body, say }) => {
   });
 });
 
-app.message('signout', async({ say }) => {
-  await say({
-    blocks: [
-      {
-        "type": "section",
-        "text": {
-          "type": "mrkdwn",
-          "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign out of loggr for the day"
-        },
-        "accessory": {
-          "type": "button",
-          "text": {
-            "type": "plain_text",
-            "text": "Sign out",
-            "emoji": true
-          },
-          "action_id": "sign-out",
-        }
-      }
-    ],
-  })
-});
-app.message('Signout', async({ say }) => {
-  await say({
-    blocks: [
-      {
-        "type": "section",
-        "text": {
-          "type": "mrkdwn",
-          "text": "Hey there :wave: I'm LoggrBot. I'm here to help you sign out of loggr for the day"
-        },
-        "accessory": {
-          "type": "button",
-          "text": {
-            "type": "plain_text",
-            "text": "Sign out",
-            "emoji": true
-          },
-          "action_id": "sign-out",
-        }
-      }
-    ],
-  })
-});
-
 app.action('sign-in', async ({ body, ack, say, respond }) => {
   await getUserEmail(body.user.id);
-  
+
   const payload = {
     name: body.user.name,
     email: userEmail,
@@ -233,41 +186,37 @@ app.action('sign-in', async ({ body, ack, say, respond }) => {
     const isDateAvailable = status.data.some(entry => new Date(entry.startTime).toISOString().split('T')[0] === currentDate);
 
     if (isDateAvailable) {
-      await say('You have already signed in for today');
+      await say({
+        text: `You have already signed in for today.`,
+        blocks: [{
+          type: 'section',
+          text: {
+            type: 'mrkdwn',
+            text: `You have already signed in for today.`
+          }
+        }]
+      });
       return;
     } else {
       await axios.post(`${process.env.SLACK_API_URL}api/attendance`, payload);
       await ack();
-      await say(`<@${body.user.id}> you have signed in for today. Have a great day ahead!`);
+      await say(
+        {
+          text: `<@${body.user.id}> you have signed in for today. Have a great day ahead!`,
+          blocks: [{
+            type: 'section',
+            text: {
+              type: 'mrkdwn',
+              text: `<@${body.user.id}> you have signed in for today. Have a great day ahead!`
+            }
+          }]
+        });
     }
-    
+
   } catch (error) {
     console.error('Error:', error);
   }
 });
-
-app.action('sign-out', async ({ body, ack, say }) => {
-  await getUserEmail(body.user.id);
-  try {
-    const currentDate = new Date().toISOString().split('T')[0];
-    const status = await axios.get(`${process.env.SLACK_API_URL}api/attendance`, { params: { email: userEmail } });
-    const isDateAvailable = status.data.some(entry => new Date(entry.startTime).toISOString().split('T')[0] === currentDate);
-    if (isDateAvailable) {
-      const payload = {
-        id: status.data[status.data.length-1].id,
-        endTime: new Date(),
-        status: false
-      };
-      await axios.put(`${process.env.SLACK_API_URL}api/attendance`, payload);
-      await ack();
-      await say(`<@${body.user.id}> you have signed out for today. Have a great day ahead!`);
-    } else {
-      await say('You have not signed in for today');
-    }
-  } catch (error) {
-    console.error('Error:', error);
-  }
-})
 
 app.action('static_select-action', async ({ body, ack, say }) => {
   // Acknowledge the action
