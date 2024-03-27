@@ -11,10 +11,8 @@
   "dependencies": {
     "@slack/bolt": "^3.17.1",
     "@slack/web-api": "^7.0.2",
-    "axios": "^1.6.7",
     "dotenv": "^16.4.5",
     "google-auth-library": "^9.7.0",
-    "google-spreadsheet": "^4.1.1",
-    "node-cron": "^3.0.3"
+    "google-spreadsheet": "^4.1.1"
   }
 }
