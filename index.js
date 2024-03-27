@@ -1,6 +1,5 @@
 require('dotenv').config(); // Add this line at the top
 
-const axios = require('axios');
 const { App } = require('@slack/bolt');
 const { WebClient } = require('@slack/web-api');
 
