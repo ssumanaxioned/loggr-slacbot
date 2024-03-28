@@ -60,11 +60,11 @@ async function checkSignedIn(email) {
 
 // Listens to incoming messages that contain "in" or "signin"
 app.message(/in|signin/i, async ({ message, say }) => {
-  await ack();
   const userProfileData = await getUserProfile(message.user);
   const isSignedIn = await checkSignedIn(userProfileData.email);
-
+  
   if (isSignedIn) {
+    await ack();
     await say({
       text: `You have already signed in for the day!`,
       blocks: [
@@ -163,11 +163,10 @@ app.action("location-select", async ({ body, ack, say }) => {
 
 // Listens to the sign-in action
 app.action("sign-in", async ({ body, ack, say }) => {
-  await ack();
   const userProfileData = await getUserProfile(body.user.id);
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle["Attendance"];
-
+  
   const payload = {
     Name: userProfileData.real_name,
     Email: userProfileData.email,
@@ -175,8 +174,9 @@ app.action("sign-in", async ({ body, ack, say }) => {
     Time: new Date().toLocaleTimeString(),
     Location: body.actions[0].value,
   };
-
+  
   try {
+    await ack();
     const isSignedIn = await checkSignedIn(userProfileData.email);
     if (!isSignedIn) {
       await sheet.addRow(payload);
