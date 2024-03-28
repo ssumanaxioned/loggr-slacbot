@@ -1,1 +1,1 @@
-# loggr-slacbot
+# Attendance bot for slack
