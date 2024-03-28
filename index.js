@@ -1,5 +1,5 @@
 require("dotenv").config();
-const { App } = require("@slack/bolt");
+const { App, AwsLambdaReceiver } = require("@slack/bolt");
 const { WebClient } = require("@slack/web-api");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const { JWT } = require("google-auth-library");
@@ -9,12 +9,14 @@ const creds = require("./credentials.json");
 // Create a new instance of the WebClient with your Slack token
 const slackClient = new WebClient(process.env.SLACK_TOKEN);
 
+const awsLambdaReceiver = new AwsLambdaReceiver({
+  signingSecret: process.env.SLACK_SIGNING_SECRET,
+});
+
 // Initializes your app with your bot token and signing secret
 const app = new App({
   token: process.env.SLACK_TOKEN,
-  signingSecret: process.env.SLACK_SIGNING_SECRET,
-  socketMode: true,
-  appToken: process.env.SLACK_APP_TOKEN,
+  receiver: awsLambdaReceiver,
 });
 
 const serviceAccountAuth = new JWT({
@@ -209,8 +211,7 @@ app.action("sign-in", async ({ body, ack, say }) => {
   }
 });
 
-(async () => {
-  // Start your app
-  await app.start();
-  console.log("⚡️ Bolt app is running!");
-})();
+module.exports.handler = async (event, context, callback) => {
+  const handler = await awsLambdaReceiver.start();
+  return handler(event, context, callback);
+};
