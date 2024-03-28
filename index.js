@@ -17,7 +17,6 @@ const awsLambdaReceiver = new AwsLambdaReceiver({
 const app = new App({
   token: process.env.SLACK_TOKEN,
   receiver: awsLambdaReceiver,
-  processBeforeResponse: true,
 });
 
 const serviceAccountAuth = new JWT({
