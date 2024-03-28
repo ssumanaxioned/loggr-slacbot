@@ -6,14 +6,11 @@ const { JWT } = require("google-auth-library");
 
 const creds = require("./credentials.json");
 
-// Create a new instance of the WebClient with your Slack token
 const slackClient = new WebClient(process.env.SLACK_TOKEN);
-
 const awsLambdaReceiver = new AwsLambdaReceiver({
   signingSecret: process.env.SLACK_SIGNING_SECRET,
 });
 
-// Initializes your app with your bot token and signing secret
 const app = new App({
   token: process.env.SLACK_TOKEN,
   receiver: awsLambdaReceiver,
@@ -29,60 +26,55 @@ const doc = new GoogleSpreadsheet(
   process.env.GOOGLE_SHEET_ID,
   serviceAccountAuth
 );
+let sheetCache = null;
 
-// Gets full profile details of the user
 async function getUserProfile(userId) {
   try {
     const response = await slackClient.users.info({ user: userId });
     return response.user.profile;
   } catch (error) {
-    console.error("Error occurred while getting user email:", error);
+    console.error("Error occurred while getting user profile:", error);
     throw error;
   }
 }
 
-// Checks if the user has already signed in for the day
 async function checkSignedIn(email) {
-  await doc.loadInfo();
-  const sheet = doc.sheetsByTitle["Attendance"];
-
+  if (!sheetCache) await loadSheet();
   const currentDate = new Date().toDateString();
-  const rows = await sheet.getRows();
-  let isFound = false;
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i].get("Email") === email && rows[i].get("Date") === currentDate) {
-      isFound = true;
-      break;
-    }
-  }
-  return isFound;
+  return sheetCache.some(
+    (row) => row.Email === email && row.Date === currentDate
+  );
 }
 
-// Listens to incoming messages that contain "in" or "signin"
+async function loadSheet() {
+  await doc.loadInfo();
+  const sheet = doc.sheetsByTitle["Attendance"];
+  const rows = await sheet.getRows();
+  sheetCache = rows;
+}
+
 app.message(/in|signin/i, async ({ message, say }) => {
-  const userProfileData = await getUserProfile(message.user);
-  const isSignedIn = await checkSignedIn(userProfileData.email);
+  const userProfileDataPromise = getUserProfile(message.user);
+  const isSignedInPromise = userProfileDataPromise.then((data) =>
+    checkSignedIn(data.email)
+  );
+
+  const [userProfileData, isSignedIn] = await Promise.all([
+    userProfileDataPromise,
+    isSignedInPromise,
+  ]);
 
   if (isSignedIn) {
     await say({
       text: `You have already signed in for the day!`,
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `You have already signed in for the day!`,
-          },
-        },
-      ],
     });
     return;
   }
 
-  const helloMessage = `Hi <@${message.user}>,
-Let's get you signed in for the day!`;
+  const helloMessage = `Hi <@${message.user}>, Let's get you signed in for the day!`;
 
   await say({
+    text: helloMessage,
     blocks: [
       {
         type: "section",
@@ -130,14 +122,13 @@ Let's get you signed in for the day!`;
         },
       },
     ],
-    text: helloMessage,
   });
 });
 
-// Listens to the location-select action
 app.action("location-select", async ({ body, ack, say }) => {
   await ack();
   await say({
+    text: "Click the button to sign in.",
     blocks: [
       {
         type: "section",
@@ -151,63 +142,50 @@ app.action("location-select", async ({ body, ack, say }) => {
             type: "plain_text",
             text: "Sign In",
           },
-          value: `${body.actions[0].selected_option.value}`,
+          value: body.actions[0].selected_option.value,
           action_id: "sign-in",
         },
       },
     ],
-    text: "Click the button to sign in.",
   });
 });
 
-// Listens to the sign-in action
 app.action("sign-in", async ({ body, ack, say }) => {
-  const userProfileData = await getUserProfile(body.user.id);
-  await doc.loadInfo();
-  const sheet = doc.sheetsByTitle["Attendance"];
+  const userProfileDataPromise = getUserProfile(body.user.id);
+  const isSignedInPromise = userProfileDataPromise.then((data) =>
+    checkSignedIn(data.email)
+  );
 
-  const payload = {
-    Name: userProfileData.real_name,
-    Email: userProfileData.email,
-    Date: new Date().toDateString(),
-    Time: new Date().toLocaleTimeString(),
-    Location: body.actions[0].value,
-  };
+  const [userProfileData, isSignedIn] = await Promise.all([
+    userProfileDataPromise,
+    isSignedInPromise,
+  ]);
 
-  try {
-    const isSignedIn = await checkSignedIn(userProfileData.email);
-    if (!isSignedIn) {
+  if (!isSignedIn) {
+    const payload = {
+      Name: userProfileData.real_name,
+      Email: userProfileData.email,
+      Date: new Date().toDateString(),
+      Time: new Date().toLocaleTimeString(),
+      Location: body.actions[0].value,
+    };
+
+    try {
+      if (!sheetCache) await loadSheet();
+      const sheet = doc.sheetsByTitle["Attendance"];
       await sheet.addRow(payload);
       await ack();
       await say({
         text: `Sign in successful! Have a great day ahead.`,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `Sign in successful! Have a great day ahead.`,
-            },
-          },
-        ],
       });
-    } else {
-      await ack();
-      await say({
-        text: `You have already signed in for the day!`,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `You have already signed in for the day!`,
-            },
-          },
-        ],
-      });
+    } catch (error) {
+      console.error("Error occurred while signing in:", error);
     }
-  } catch (error) {
-    console.error("Error: ", error);
+  } else {
+    await ack();
+    await say({
+      text: `You have already signed in for the day!`,
+    });
   }
 });
 
