@@ -17,6 +17,7 @@ const awsLambdaReceiver = new AwsLambdaReceiver({
 const app = new App({
   token: process.env.SLACK_TOKEN,
   receiver: awsLambdaReceiver,
+  processBeforeResponse: true,
 });
 
 const serviceAccountAuth = new JWT({
@@ -60,6 +61,7 @@ async function checkSignedIn(email) {
 
 // Listens to incoming messages that contain "in" or "signin"
 app.message(/in|signin/i, async ({ message, say }) => {
+  await ack();
   const userProfileData = await getUserProfile(message.user);
   const isSignedIn = await checkSignedIn(userProfileData.email);
 
@@ -162,6 +164,7 @@ app.action("location-select", async ({ body, ack, say }) => {
 
 // Listens to the sign-in action
 app.action("sign-in", async ({ body, ack, say }) => {
+  await ack();
   const userProfileData = await getUserProfile(body.user.id);
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle["Attendance"];
@@ -178,7 +181,6 @@ app.action("sign-in", async ({ body, ack, say }) => {
     const isSignedIn = await checkSignedIn(userProfileData.email);
     if (!isSignedIn) {
       await sheet.addRow(payload);
-      await ack();
       await say({
         text: `Sign in successful! Have a great day ahead.`,
         blocks: [
@@ -192,7 +194,6 @@ app.action("sign-in", async ({ body, ack, say }) => {
         ],
       });
     } else {
-      await ack();
       await say({
         text: `You have already signed in for the day!`,
         blocks: [
