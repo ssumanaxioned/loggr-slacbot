@@ -2,7 +2,6 @@ require("dotenv").config();
 const { App, AwsLambdaReceiver } = require("@slack/bolt");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const { JWT } = require("google-auth-library");
-const { format } = require("date-fns");
 
 const creds = require("./credentials.json");
 
@@ -116,8 +115,8 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle["Attendance"];
   const dateFromUser = new Date();
-  const date = format(dateFromUser, "yyyy-MM-dd");
-  const time = format(dateFromUser, "HH:mm:ss");
+  const date = dateFromUser.toLocaleDateString();
+  const time = dateFromUser.toLocaleTimeString();
 
   const dataToSend = {
     Name: userProfileData.user.real_name,
