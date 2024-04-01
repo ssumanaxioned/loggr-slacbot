@@ -1,4 +1,3 @@
-require("dotenv").config();
 const { App, AwsLambdaReceiver } = require("@slack/bolt");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const { JWT } = require("google-auth-library");

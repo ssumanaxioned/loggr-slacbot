@@ -10,7 +10,6 @@
   "license": "ISC",
   "dependencies": {
     "@slack/bolt": "^3.17.1",
-    "dotenv": "^16.4.5",
     "google-auth-library": "^9.7.0",
     "google-spreadsheet": "^4.1.1"
   },
