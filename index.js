@@ -39,44 +39,8 @@ async function getUserProfile(userId) {
   }
 }
 
-// Checks if the user has already signed in for the day
-async function checkSignedIn(email) {
-  await doc.loadInfo();
-  const sheet = doc.sheetsByTitle["Attendance"];
-
-  const currentDate = new Date().toDateString();
-  const rows = await sheet.getRows();
-  let isFound = false;
-  for (let i = 0; i < rows.length; i++) {
-    if (rows[i].get("Email") === email && rows[i].get("Date") === currentDate) {
-      isFound = true;
-      break;
-    }
-  }
-  return isFound;
-}
-
 // Listens to incoming messages that contain "in" or "signin"
 app.message(/in|signin/i, async ({ message, say }) => {
-  const userProfileData = await getUserProfile(message.user);
-  const isSignedIn = await checkSignedIn(userProfileData.email);
-
-  if (isSignedIn) {
-    await say({
-      text: `You have already signed in for the day!`,
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `You have already signed in for the day!`,
-          },
-        },
-      ],
-    });
-    return;
-  }
-
   const helloMessage = `Hi <@${message.user}>,
 Let's get you signed in for the day!`;
 
@@ -173,37 +137,20 @@ app.action("sign-in", async ({ body, ack, say }) => {
   };
 
   try {
-    const isSignedIn = await checkSignedIn(userProfileData.email);
-    if (!isSignedIn) {
-      await sheet.addRow(payload);
-      await ack();
-      await say({
-        text: `Sign in successful! Have a great day ahead.`,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `Sign in successful! Have a great day ahead.`,
-            },
+    await ack();
+    await sheet.addRow(payload);
+    await say({
+      text: `Sign in successful! Have a great day ahead.`,
+      blocks: [
+        {
+          type: "section",
+          text: {
+            type: "mrkdwn",
+            text: `Sign in successful! Have a great day ahead.`,
           },
-        ],
-      });
-    } else {
-      await ack();
-      await say({
-        text: `You have already signed in for the day!`,
-        blocks: [
-          {
-            type: "section",
-            text: {
-              type: "mrkdwn",
-              text: `You have already signed in for the day!`,
-            },
-          },
-        ],
-      });
-    }
+        },
+      ],
+    });
   } catch (error) {
     console.error("Error: ", error);
   }
