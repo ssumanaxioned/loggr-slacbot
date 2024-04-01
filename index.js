@@ -115,11 +115,14 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle[process.env.SHEET_NAME];
 
+  const indianTimeZoneOffset = -330; // GMT+5:30
+  const timezoneOffset = indianTimeZoneOffset * 60000; // Get the timezone offset in milliseconds
+  const localDate = new Date(Date.now() - timezoneOffset); // Get the local date and time
   const dataToSend = {
     Name: userProfileData.user.real_name,
     Email: userProfileData.user.profile.email,
-    Date: new Date().toDateString(),
-    Time: new Date().toTimeString(),
+    Date: localDate.toLocaleDateString(),
+    Time: localDate.toLocaleTimeString(),
     Location: payload.value,
   };
 
