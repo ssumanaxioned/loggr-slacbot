@@ -1,13 +1,10 @@
 require("dotenv").config();
 const { App } = require("@slack/bolt");
-const { WebClient } = require("@slack/web-api");
 const { GoogleSpreadsheet } = require("google-spreadsheet");
 const { JWT } = require("google-auth-library");
+const { fromUnixTime, format } = require("date-fns");
 
 const creds = require("./credentials.json");
-
-// Create a new instance of the WebClient with your Slack token
-const slackClient = new WebClient(process.env.SLACK_TOKEN);
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
@@ -27,17 +24,6 @@ const doc = new GoogleSpreadsheet(
   process.env.GOOGLE_SHEET_ID,
   serviceAccountAuth
 );
-
-// Gets full profile details of the user
-async function getUserProfile(userId) {
-  try {
-    const response = await slackClient.users.info({ user: userId });
-    return response.user.profile;
-  } catch (error) {
-    console.error("Error occurred while getting user email:", error);
-    throw error;
-  }
-}
 
 // Listens to incoming messages that contain "in" or "signin"
 app.message(/in|signin/i, async ({ message, say }) => {
@@ -97,7 +83,7 @@ Let's get you signed in for the day!`;
 });
 
 // Listens to the location-select action
-app.action("location-select", async ({ body, ack, say }) => {
+app.action("location-select", async ({ ack, say, payload }) => {
   await ack();
   await say({
     blocks: [
@@ -113,7 +99,7 @@ app.action("location-select", async ({ body, ack, say }) => {
             type: "plain_text",
             text: "Sign In",
           },
-          value: `${body.actions[0].selected_option.value}`,
+          value: `${payload.selected_option.value}`,
           action_id: "sign-in",
         },
       },
@@ -123,22 +109,24 @@ app.action("location-select", async ({ body, ack, say }) => {
 });
 
 // Listens to the sign-in action
-app.action("sign-in", async ({ body, ack, say }) => {
-  const userProfileData = await getUserProfile(body.user.id);
+app.action("sign-in", async ({ body, ack, say, payload, client }) => {
+  const userProfileData = await client.users.info({ user: body.user.id });
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle["Attendance"];
+  const dateFromUser = fromUnixTime(payload.action_ts);
+  const date = format(dateFromUser, "yyyy-MM-dd");
+  const time = format(dateFromUser, "HH:mm:ss");
 
-  const payload = {
-    Name: userProfileData.real_name,
-    Email: userProfileData.email,
-    Date: new Date().toDateString(),
-    Time: new Date().toLocaleTimeString(),
-    Location: body.actions[0].value,
+  const dataToSend = {
+    Name: userProfileData.user.real_name,
+    Email: userProfileData.user.profile.email,
+    Date: date,
+    Time: time,
+    Location: payload.value,
   };
 
   try {
     await ack();
-    await sheet.addRow(payload);
     await say({
       text: `Sign in successful! Have a great day ahead.`,
       blocks: [
@@ -151,6 +139,7 @@ app.action("sign-in", async ({ body, ack, say }) => {
         },
       ],
     });
+    await sheet.addRow(dataToSend);
   } catch (error) {
     console.error("Error: ", error);
   }
