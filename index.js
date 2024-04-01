@@ -115,7 +115,7 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
   const sheet = doc.sheetsByTitle[process.env.SHEET_NAME];
 
   const indianTimeZoneOffset =
-    process.env.SHEET_NAME === "development" ? 0 : -330; // GMT+5:30
+    process.env.SHEET_NAME === "Development" ? 0 : -330; // GMT+5:30
 
   const timezoneOffset = indianTimeZoneOffset * 60000; // Get the timezone offset in milliseconds
   const localDate = new Date(Date.now() - timezoneOffset); // Get the local date and time
