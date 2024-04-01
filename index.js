@@ -129,6 +129,7 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
 
   try {
     await ack();
+    await sheet.addRow(dataToSend);
     await say({
       text: `Sign in successful! Have a great day ahead.`,
       blocks: [
@@ -141,7 +142,6 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
         },
       ],
     });
-    await sheet.addRow(dataToSend);
   } catch (error) {
     console.error("Error: ", error);
   }
