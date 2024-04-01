@@ -109,43 +109,44 @@ app.action("location-select", async ({ ack, say, payload }) => {
 });
 
 // Listens to the sign-in action
-app.action("sign-in", async ({ body, ack, say, payload, client }) => {
-  const userProfileData = await client.users.info({ user: body.user.id });
-  await doc.loadInfo();
-  const sheet = doc.sheetsByTitle[process.env.SHEET_NAME];
+app.action(
+  "sign-in",
+  async ({ body, ack, say, payload, client, action, respond }) => {
+    const userProfileData = await client.users.info({ user: body.user.id });
+    await doc.loadInfo();
+    const sheet = doc.sheetsByTitle[process.env.SHEET_NAME];
 
-  const indianTimeZoneOffset =
-    process.env.SHEET_NAME === "Development" ? 0 : -330; // GMT+5:30
+    const indianTimeZoneOffset =
+      process.env.SHEET_NAME === "Development" ? 0 : -330; // GMT+5:30
 
-  const timezoneOffset = indianTimeZoneOffset * 60000; // Get the timezone offset in milliseconds
-  const localDate = new Date(Date.now() - timezoneOffset); // Get the local date and time
-  const dataToSend = {
-    Name: userProfileData.user.real_name,
-    Email: userProfileData.user.profile.email,
-    Date: localDate.toLocaleDateString(),
-    Time: localDate.toLocaleTimeString(),
-    Location: payload.value,
-  };
+    const timezoneOffset = indianTimeZoneOffset * 60000; // Get the timezone offset in milliseconds
+    const localDate = new Date(Date.now() - timezoneOffset); // Get the local date and time
+    const dataToSend = {
+      Name: userProfileData.user.real_name,
+      Email: userProfileData.user.profile.email,
+      Date: localDate.toLocaleDateString(),
+      Time: localDate.toLocaleTimeString(),
+      Location: payload.value,
+    };
 
-  try {
-    await ack();
-    await sheet.addRow(dataToSend);
-    await say({
-      text: `Sign in successful! Have a great day ahead.`,
-      blocks: [
-        {
-          type: "section",
-          text: {
-            type: "mrkdwn",
-            text: `Sign in successful! Have a great day ahead.`,
-          },
-        },
-      ],
-    });
-  } catch (error) {
-    console.error("Error: ", error);
+    try {
+      await ack();
+
+      setTimeout(async () => {
+        await sheet.addRow(dataToSend);
+      }, 0);
+
+      if (action.type === "button") {
+        await respond(
+          `You've selected: ${payload.value}.
+Sign in successful! Have a great day ahead.`
+        );
+      }
+    } catch (error) {
+      console.error("Error: ", error);
+    }
   }
-});
+);
 
 module.exports.handler = async (event, context, callback) => {
   const handler = await awsLambdaReceiver.start();
