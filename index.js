@@ -115,7 +115,7 @@ app.action("sign-in", async ({ body, ack, say, payload, client }) => {
   const userProfileData = await client.users.info({ user: body.user.id });
   await doc.loadInfo();
   const sheet = doc.sheetsByTitle["Attendance"];
-  const dateFromUser = new Date().toLocaleDateString();
+  const dateFromUser = new Date();
   const date = format(dateFromUser, "yyyy-MM-dd");
   const time = format(dateFromUser, "HH:mm:ss");
 
