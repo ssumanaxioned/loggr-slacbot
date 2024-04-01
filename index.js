@@ -11,7 +11,7 @@ const awsLambdaReceiver = new AwsLambdaReceiver({
 
 // Initializes your app with your bot token and signing secret
 const app = new App({
-  token: process.env.SLACK_TOKEN,
+  token: process.env.SLACK_BOT_TOKEN,
   receiver: awsLambdaReceiver,
 });
 
@@ -113,17 +113,13 @@ app.action("location-select", async ({ ack, say, payload }) => {
 app.action("sign-in", async ({ body, ack, say, payload, client }) => {
   const userProfileData = await client.users.info({ user: body.user.id });
   await doc.loadInfo();
-  const sheet = doc.sheetsByTitle["Attendance"];
-  const dateFromUser = new Date();
-  const date = dateFromUser.toLocaleDateString();
-  const offset = new Date().getTimezoneOffset() * 60000; // Get the time offset in milliseconds
-  const time = new Date(Date.now() - offset).toLocaleTimeString(); // Adjust the time based on the offset
+  const sheet = doc.sheetsByTitle[process.env.SHEET_NAME];
 
   const dataToSend = {
     Name: userProfileData.user.real_name,
     Email: userProfileData.user.profile.email,
-    Date: date,
-    Time: time,
+    Date: new Date().toDateString(),
+    Time: new Date().toTimeString(),
     Location: payload.value,
   };
 
